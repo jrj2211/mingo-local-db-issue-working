@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    user: root
+    command: sleep infinity
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/lib/docker:/var/lib/docker
+    network_mode: service:mongodb
+  mongodb:
+    hostname: mongodb
+    image: mongo:5.0.9
+    environment:
+      MONGO_INITDB_DATABASE: zyphox
+      MONGO_REPLICA_SET_NAME: rs0
+    volumes:
+      - mongo-data:/data/db
+    restart: always
+    entrypoint: ['/usr/bin/mongod', '--bind_ip_all', '--replSet', 'rs0']
+    healthcheck:
+      test: test $$(echo "rs.initiate({_id:'rs0', version:1, members:[ { _id:0, host :'localhost:27017' }]}).ok || rs.slaveOk().ok || rs.status().ok" | mongo --quiet) -eq 1
+      interval: 10s
+      start_period: 30s
+
+volumes:
+  mongo-data:
